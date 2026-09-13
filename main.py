@@ -4,6 +4,7 @@ import tempfile
 import difflib
 import re
 import models
+import seed
 
 # ⭐️ Depends와 Session 추가
 from fastapi import FastAPI, UploadFile, File, Form, Depends
@@ -15,6 +16,8 @@ from openai import OpenAI
 
 # DB 테이블 생성
 models.Base.metadata.create_all(bind=engine)
+
+seed.load_seed_data()
 
 # ⭐️ DB 세션 의존성 함수 추가
 def get_db():
