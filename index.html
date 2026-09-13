@@ -1,0 +1,69 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>발음 녹음 테스트</title>
+</head>
+<body>
+    <h2>🎤 발음 녹음 테스트 화면</h2>
+    <button id="recordBtn">녹음 시작</button>
+    <p id="status">대기 중...</p>
+    <h3 id="result"></h3>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        const recordBtn = document.getElementById('recordBtn');
+        const statusTxt = document.getElementById('status');
+        const resultTxt = document.getElementById('result');
+
+        recordBtn.onclick = async () => {
+            if (recordBtn.innerText === '녹음 시작') {
+                // 1. 마이크 권한 요청 및 녹음 시작
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = sendAudioToServer;
+                
+                mediaRecorder.start();
+                recordBtn.innerText = '녹음 중지';
+                statusTxt.innerText = '녹음 중입니다... 말을 마치면 중지 버튼을 누르세요.';
+            } else {
+                // 2. 녹음 중지
+                mediaRecorder.stop();
+                recordBtn.innerText = '녹음 시작';
+                statusTxt.innerText = '서버로 전송 중...';
+            }
+        };
+
+        // 3. 서버(FastAPI)로 파일 전송
+        async function sendAudioToServer() {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            audioChunks = []; // 초기화
+
+            const formData = new FormData();
+            formData.append("audio_file", audioBlob, "record.webm");
+
+            try {
+                const response = await fetch('/api/analyze-audio', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if(data.status === "success"){
+                    resultTxt.innerText = "분석 결과: " + data.text;
+                    statusTxt.innerText = "완료!";
+                } else {
+                    resultTxt.innerText = "오류 발생: " + data.message;
+                }
+            } catch (err) {
+                console.error(err);
+                statusTxt.innerText = "전송 실패";
+            }
+        }
+    </script>
+</body>
+</html>
